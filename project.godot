@@ -1,0 +1,41 @@
+; Engine configuration file.
+; Het Klimbos -- teken een plan op papier en bouw daarna in een megabos je eigen
+; klimparcours tussen de bomen: planken, platforms, bruggen, touwen, klimhaken,
+; klimnetten en tokkelbanen.
+
+config_version=5
+
+[application]
+
+config/name="Het Klimbos"
+config/description="Teken een plan en bouw je eigen klimparcours in een megabos."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.5", "Forward Plus")
+config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=6
+
+[input_devices]
+
+; Een vinger doet ook mee als muis (knoppen, tekenen op het schetspapier).
+pointing/emulate_mouse_from_touch=true
+
+[rendering]
+
+; Zuinige instellingen, zodat het spel soepel loopt op een gewone laptop.
+; In de browser en op tablets gebruikt Godot de Compatibility-renderer
+; (WebGL 2); daar bestaat de schermranden-gladmaker (FXAA) niet.
+renderer/rendering_method.mobile="gl_compatibility"
+lights_and_shadows/directional_shadow/size=2048
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=1
+anti_aliasing/quality/screen_space_aa=1
+anti_aliasing/quality/screen_space_aa.web=0
+anti_aliasing/quality/screen_space_aa.mobile=0
+mesh_lod/lod_change/threshold_pixels=3.0
+textures/vram_compression/import_etc2_astc=true

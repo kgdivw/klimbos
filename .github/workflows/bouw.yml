@@ -1,0 +1,65 @@
+# Bouwt Het Klimbos bij elke push naar main:
+#  - de web-versie (speelbaar in de browser op pc en tablet) komt op GitHub Pages;
+#  - de Windows-versie staat er als zip naast om te downloaden.
+name: Bouw en publiceer
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSIE: "4.5.1"
+
+jobs:
+  bouw:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Godot en exporttemplates downloaden
+        run: |
+          basis="https://github.com/godotengine/godot/releases/download/${GODOT_VERSIE}-stable"
+          wget -q "$basis/Godot_v${GODOT_VERSIE}-stable_linux.x86_64.zip"
+          wget -q "$basis/Godot_v${GODOT_VERSIE}-stable_export_templates.tpz"
+          unzip -q "Godot_v${GODOT_VERSIE}-stable_linux.x86_64.zip"
+          mv "Godot_v${GODOT_VERSIE}-stable_linux.x86_64" godot
+          mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSIE}.stable
+          unzip -q "Godot_v${GODOT_VERSIE}-stable_export_templates.tpz"
+          mv templates/* ~/.local/share/godot/export_templates/${GODOT_VERSIE}.stable/
+
+      - name: Project importeren
+        run: ./godot --headless --path . --import || true
+
+      - name: Exporteren (web en Windows)
+        run: |
+          mkdir -p build/web build/windows
+          ./godot --headless --path . --export-release "Web" build/web/index.html
+          ./godot --headless --path . --export-release "Windows Desktop" build/windows/HetKlimbos.exe
+          test -f build/web/index.wasm
+          test -f build/windows/HetKlimbos.exe
+          (cd build/windows && zip -q ../web/HetKlimbos-Windows.zip HetKlimbos.exe)
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  publiceer:
+    needs: bouw
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.uitrol.outputs.page_url }}
+    steps:
+      - id: uitrol
+        uses: actions/deploy-pages@v4

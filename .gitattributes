@@ -1,0 +1,4 @@
+# Godot-bestanden met gewone (LF) regeleindes; speel.bat is een Windows-bestand.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary

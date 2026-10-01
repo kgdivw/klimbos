@@ -1,0 +1,6 @@
+# Godot-cache en gebouwde versies
+.godot/
+build/
+shots/
+*.tmp
+export_credentials.cfg
