@@ -1,6 +1,9 @@
 # Bouwt Het Klimbos bij elke push naar main:
-#  - de web-versie (speelbaar in de browser op pc en tablet) komt op GitHub Pages;
-#  - de Windows-versie staat er als zip naast om te downloaden.
+#  - de web-versie (speelbaar in de browser op pc en tablet) komt op GitHub Pages,
+#    samen met de privacyverklaring en de Windows-versie als zip;
+#  - de Android-versie: altijd een test-APK, en als de uploadsleutel als geheim
+#    is ingesteld ook het ondertekende .aab voor de Google Play Store.
+#    Beide staan daarna als download bij de run (onder "Artifacts").
 name: Bouw en publiceer
 
 on:
@@ -48,6 +51,7 @@ jobs:
           test -f build/web/index.wasm
           test -f build/windows/HetKlimbos.exe
           (cd build/windows && zip -q ../web/HetKlimbos-Windows.zip HetKlimbos.exe)
+          cp pages/*.html build/web/
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
@@ -63,3 +67,86 @@ jobs:
     steps:
       - id: uitrol
         uses: actions/deploy-pages@v4
+
+  android:
+    runs-on: ubuntu-latest
+    env:
+      # Geheimen (Settings → Secrets and variables → Actions); zie winkel/PLAY_STORE.md.
+      UPLOAD_SLEUTEL: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+      UPLOAD_ALIAS: ${{ secrets.ANDROID_UPLOAD_ALIAS }}
+      UPLOAD_WACHTWOORD: ${{ secrets.ANDROID_UPLOAD_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Godot en exporttemplates downloaden
+        run: |
+          basis="https://github.com/godotengine/godot/releases/download/${GODOT_VERSIE}-stable"
+          wget -q "$basis/Godot_v${GODOT_VERSIE}-stable_linux.x86_64.zip"
+          wget -q "$basis/Godot_v${GODOT_VERSIE}-stable_export_templates.tpz"
+          unzip -q "Godot_v${GODOT_VERSIE}-stable_linux.x86_64.zip"
+          mv "Godot_v${GODOT_VERSIE}-stable_linux.x86_64" godot
+          mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSIE}.stable
+          unzip -q "Godot_v${GODOT_VERSIE}-stable_export_templates.tpz"
+          mv templates/* ~/.local/share/godot/export_templates/${GODOT_VERSIE}.stable/
+
+      - name: Godot instellen voor Android
+        run: |
+          # Een openbare test-sleutel, alleen voor de test-APK.
+          keytool -genkeypair -keyalg RSA -alias androiddebugkey -keypass android \
+            -keystore "$HOME/debug.keystore" -storepass android \
+            -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
+          mkdir -p ~/.config/godot
+          cat > ~/.config/godot/editor_settings-4.5.tres <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_SDK_ROOT"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$HOME/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+          sed -i 's/^ *//' ~/.config/godot/editor_settings-4.5.tres
+
+      - name: Versienummer (elke build hoger, dat eist Google Play)
+        run: |
+          sed -i "s/^version\/code=.*/version\/code=${{ github.run_number }}/" export_presets.cfg
+          sed -i "s/^version\/name=.*/version\/name=\"1.0.${{ github.run_number }}\"/" export_presets.cfg
+
+      - name: Project importeren
+        run: ./godot --headless --path . --import || true
+
+      - name: Test-APK bouwen (om zelf op een tablet te zetten)
+        run: |
+          mkdir -p build/android
+          sed -i 's/^gradle_build\/export_format=1/gradle_build\/export_format=0/' export_presets.cfg
+          ./godot --headless --path . --install-android-build-template --export-debug "Android" build/android/HetKlimbos-test.apk || true
+          if [ ! -f build/android/HetKlimbos-test.apk ]; then
+            chmod +x android/build/gradlew
+            ./godot --headless --path . --export-debug "Android" build/android/HetKlimbos-test.apk
+          fi
+          sed -i 's/^gradle_build\/export_format=0/gradle_build\/export_format=1/' export_presets.cfg
+          test -f build/android/HetKlimbos-test.apk
+
+      - name: Ondertekende .aab voor de Play Store
+        if: env.UPLOAD_SLEUTEL != ''
+        run: |
+          echo "$UPLOAD_SLEUTEL" | base64 -d > "$RUNNER_TEMP/upload.keystore"
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$RUNNER_TEMP/upload.keystore"
+          export GODOT_ANDROID_KEYSTORE_RELEASE_USER="$UPLOAD_ALIAS"
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$UPLOAD_WACHTWOORD"
+          ./godot --headless --path . --export-release "Android" build/android/HetKlimbos.aab
+          rm -f "$RUNNER_TEMP/upload.keystore"
+          test -f build/android/HetKlimbos.aab
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HetKlimbos-android-${{ github.run_number }}
+          path: |
+            build/android/*.apk
+            build/android/*.aab

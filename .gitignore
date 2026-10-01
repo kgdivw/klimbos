@@ -4,3 +4,9 @@ build/
 shots/
 *.tmp
 export_credentials.cfg
+
+# Android: het bouwsjabloon wordt bij het bouwen opnieuw geïnstalleerd,
+# en de uploadsleutel is GEHEIM en hoort nooit in git.
+android/
+*.keystore
+*.jks
