@@ -37,6 +37,7 @@ var _tok_s := 0.0
 var _tok_v := 0.0
 var _klim_pauze := 0.0
 var bevroren := true
+var verstopt := false     # poppetje even onzichtbaar (bijv. voor winkelplaatjes)
 
 
 func _ready() -> void:
@@ -582,4 +583,4 @@ func _camera_volgen(delta: float) -> void:
 	arm.spring_length = afstand
 	# Kijk je omhoog (naar je plan in de lucht), dan zakt de camera tot bij de
 	# grond en zou je tegen de achterkant van het poppetje aankijken.
-	model.visible = pitch < 0.45 or staat != "lopen"
+	model.visible = not verstopt and (pitch < 0.45 or staat != "lopen")

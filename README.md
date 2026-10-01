@@ -11,6 +11,9 @@ klimnetten en tokkelbanen. Zes vriendjes klimmen mee op alles wat je bouwt.
   (uitpakken en `HetKlimbos.exe` starten; Windows kan de eerste keer waarschuwen omdat
   het programma niet ondertekend is: kies dan *Meer info* → *Toch uitvoeren*)
 
+Binnenkort ook in de Google Play Store (zie `winkel/PLAY_STORE.md`).
+Privacy: het spel verzamelt geen gegevens — https://kgdivw.github.io/klimbos/privacy.html
+
 Op een tablet speel je het liefst liggend (landschap). Je opgeslagen spellen blijven
 in de browser bewaard.
 
